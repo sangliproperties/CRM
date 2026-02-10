@@ -1,0 +1,123 @@
+2025-10-08 15:23:59.00
+0c056d2a
+User
+at async DatabaseStorage.upsertUser (file:///home/runner/workspace/dist/index.js:227:20)
+2025-10-08 15:23:59.00
+0c056d2a
+User
+at async upsertUser (file:///home/runner/workspace/dist/index.js:456:3)
+2025-10-08 15:23:59.00
+0c056d2a
+User
+at async Strategy.verify [as _verify] (file:///home/runner/workspace/dist/index.js:474:5) {
+2025-10-08 15:23:59.00
+0c056d2a
+User
+length: 148,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+severity: 'ERROR',
+2025-10-08 15:23:59.00
+0c056d2a
+User
+code: '42P10',
+2025-10-08 15:23:59.00
+0c056d2a
+User
+detail: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+hint: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+position: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+internalPosition: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+internalQuery: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+where: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+schema: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+table: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+column: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+dataType: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+constraint: undefined,
+2025-10-08 15:23:59.00
+0c056d2a
+User
+file: 'plancat.c',
+2025-10-08 15:23:59.00
+0c056d2a
+User
+line: '915',
+2025-10-08 15:23:59.00
+0c056d2a
+User
+routine: 'infer_arbiter_indexes'
+2025-10-08 15:23:59.00
+0c056d2a
+User
+}
+2025-10-08 15:23:59.00
+0c056d2a
+User
+2025-10-08 15:23:59.00
+0c056d2a
+User
+Node.js v20.19.3
+2025-10-08 15:23:59.01
+0c056d2a
+User
+npm notice
+2025-10-08 15:23:59.01
+0c056d2a
+User
+npm notice New major version of npm available! 10.8.2 -> 11.6.1
+2025-10-08 15:23:59.01
+0c056d2a
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.1
+2025-10-08 15:23:59.01
+0c056d2a
+User
+npm notice To update run: npm install -g npm@11.6.1
+2025-10-08 15:23:59.01
+0c056d2a
+User
+npm notice
+2025-10-08 15:23:59.02
+0c056d2a
+System
+command finished with error [npm run start]: exit status 1
+2025-10-08 15:24:05.63
+0c056d2a
+User
+> rest-express@1.0.0 start
+2025-10-08 15:24:05.63
+0c056d2a
+User
+> NODE_ENV=production node dist/index.js

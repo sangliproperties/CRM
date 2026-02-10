@@ -1,0 +1,123 @@
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+at async NeonPreparedQuery.execute (file:///home/runner/workspace/node_modules/drizzle-orm/neon-serverless/session.js:76:20)
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+at async DatabaseStorage.upsertUser (file:///home/runner/workspace/dist/index.js:227:20)
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+at async upsertUser (file:///home/runner/workspace/dist/index.js:453:3)
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+at async Strategy.verify [as _verify] (file:///home/runner/workspace/dist/index.js:471:5) {
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+length: 219,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+severity: 'ERROR',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+code: '23505',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+detail: 'Key (email)=(anjalitunge@gmail.com) already exists.',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+hint: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+position: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+internalPosition: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+internalQuery: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+where: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+schema: 'public',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+table: 'users',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+column: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+dataType: undefined,
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+constraint: 'users_email_unique',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+file: 'nbtinsert.c',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+line: '666',
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+routine: '_bt_check_unique'
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+}
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+2025-10-08 15:16:16.86
+6f37f8d4
+User
+Node.js v20.19.3
+2025-10-08 15:16:16.88
+6f37f8d4
+User
+npm notice
+2025-10-08 15:16:16.88
+6f37f8d4
+User
+npm notice New major version of npm available! 10.8.2 -> 11.6.1
+2025-10-08 15:16:16.88
+6f37f8d4
+User
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.1
+2025-10-08 15:16:16.88
+6f37f8d4
+User
+npm notice To update run: npm install -g npm@11.6.1
+2025-10-08 15:16:16.88
+6f37f8d4
+User
+npm notice
+2025-10-08 15:16:16.89
+6f37f8d4
+System
+command finished with error [npm run start]: exit status 1

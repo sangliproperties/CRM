@@ -1,0 +1,114 @@
+[
+  {
+    "email": "superadmin@sanglicrm.com",
+    "password": "superadmin123",
+    "role": "SuperAdmin",
+    "firstName": "Super",
+    "lastName": "Admin",
+    "active": true
+  },
+  {
+    "email": "agent@sanglicrm.com",
+    "password": "agent123",
+    "role": "Sales Agent",
+    "firstName": "Sales",
+    "lastName": "Agent",
+    "active": true
+  },
+  {
+    "email": "marketing@sanglicrm.com",
+    "password": "marketing123",
+    "role": "Marketing Executive",
+    "firstName": "Marketing",
+    "lastName": "Exec",
+    "active": true
+  },
+  {
+    "email": "manager@sanglicrm.com",
+    "password": "manager123",
+    "role": "Property Manager",
+    "firstName": "Property",
+    "lastName": "Manager",
+    "active": true
+  },
+  {
+    "email": "ganesh01@sanglicrm.com",
+    "password": "ganesh@01",
+    "role": "Marketing Executive",
+    "firstName": "Ganesh",
+    "lastName": "Shedbale",
+    "active": true
+  },
+  {
+    "email": "sujit11@sanglicrm.com",
+    "password": "sujit@11",
+    "role": "Marketing Executive",
+    "firstName": "Sujit",
+    "lastName": "Patil",
+    "active": true
+  },
+  {
+    "email": "sachin06@sanglicrm.com",
+    "password": "sachin@06",
+    "role": "Marketing Executive",
+    "firstName": "Sachin",
+    "lastName": "Pawar",
+    "active": true
+  },
+  {
+    "email": "sagar10@sanglicrm.com",
+    "password": "sagar@10",
+    "role": "Marketing Executive",
+    "firstName": "Sagar",
+    "lastName": "Magdum",
+    "active": true
+  },
+  {
+    "email": "rishi555@sanglicrm.com",
+    "password": "rishi@555",
+    "role": "Marketing Executive",
+    "firstName": "Rishi",
+    "lastName": "Jadhav",
+    "active": false
+  },
+  {
+    "email": "amit05@sanglicrm.com",
+    "password": "amit05",
+    "role": "Admin",
+    "firstName": "Amit",
+    "lastName": "Phakade",
+    "active": true
+  },
+  {
+    "email": "ravina02@sanglicrm.com",
+    "password": "ravina02",
+    "role": "Admin",
+    "firstName": "Ravina",
+    "lastName": "Pimpale",
+    "active": true
+  },
+  {
+    "email": "rasika03@sanglicrm.com",
+    "password": "rasika03",
+    "role": "Admin",
+    "firstName": "Rasika",
+    "lastName": "Jadhav",
+    "active": true
+  },
+  {
+    "email": "Uma05@sanglicrm.com",
+    "password": "Uma05",
+    "role": "Admin",
+    "firstName": "Uma",
+    "lastName": "Joshi",
+    "active": true
+  },
+  {
+    "email": "Shukriya01@sanglicrm.com",
+    "password": "Shukriya01",
+    "role": "Admin",
+    "firstName": "Shukriya",
+    "lastName": "Navale",
+    "active": true
+  }
+]
