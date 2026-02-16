@@ -1984,6 +1984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dashboard routes
   app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
+    
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
