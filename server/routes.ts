@@ -214,6 +214,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // ✅ Basic Email Login (creates session + req.user.claims.sub)
+  app.post("/api/login", async (req: any, res) => {
+    try {
+      const loginId = String(req.body?.email || req.body?.username || "").trim();
+      if (!loginId) return res.status(400).json({ message: "Email is required" });
+
+      // Find user by email from DB
+      const allUsers = await storage.getAllUsers();
+      const dbUser = allUsers.find(
+        (u) => (u.email || "").toLowerCase() === loginId.toLowerCase()
+      );
+
+      if (!dbUser) return res.status(401).json({ message: "Invalid user" });
+
+      // ✅ Save session user
+      (req.session as any).user = {
+        id: dbUser.id,
+        role: dbUser.role,
+        email: dbUser.email,
+        firstName: (dbUser as any).firstName,
+        lastName: (dbUser as any).lastName,
+      };
+
+      // ✅ Normalize req.user.claims.sub so your existing routes work
+      (req as any).user = (req as any).user || {};
+      (req as any).user.claims = (req as any).user.claims || {};
+      (req as any).user.claims.sub = String(dbUser.id);
+
+      return res.json({ ok: true, user: dbUser });
+    } catch (e) {
+      console.error("Login error:", e);
+      return res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  app.post("/api/logout", (req: any, res) => {
+    try {
+      req.session?.destroy?.(() => { });
+      res.clearCookie("connect.sid");
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(200).json({ ok: true });
+    }
+  });
+
+  app.get("/api/session", (req: any, res) => {
+    const u = (req.session as any)?.user;
+    if (!u?.id) return res.status(401).json({ message: "Unauthorized" });
+    return res.json({ ok: true, user: u });
+  });
+
+
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -370,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Lead routes
-  app.get("/api/leads", async (req: any, res) => {
+  app.get("/api/leads", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -402,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/leads/:id", async (req: any, res) => {
+  app.get("/api/leads/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -491,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/leads/:id", async (req: any, res) => {
+  app.patch("/api/leads/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -640,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/leads/:id", async (req: any, res) => {
+  app.delete("/api/leads/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -676,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Activity routes
-  app.get("/api/leads/:id/activities", async (req: any, res) => {
+  app.get("/api/leads/:id/activities", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -711,7 +763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leads/:id/activities", async (req: any, res) => {
+  app.post("/api/leads/:id/activities", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1931,7 +1983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard routes
-  app.get("/api/dashboard/stats", async (req: any, res) => {
+  app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -2028,7 +2080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/lead-sources", async (req: any, res) => {
+  app.get("/api/dashboard/lead-sources", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -2074,7 +2126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/recent-activities", async (req: any, res) => {
+  app.get("/api/dashboard/recent-activities",isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
