@@ -16,6 +16,10 @@ import {
   projectUnitConfigs,
   projectImages,
   projectDocuments,
+  apartments,
+  type Apartment,
+  type InsertApartment,
+  insertApartmentSchema,
   type User,
   type UpsertUser,
   type Lead,
@@ -131,8 +135,14 @@ export interface IStorage {
   getRecentActivities(limit: number): Promise<Activity[]>;
   getPhoneCallActivities(): Promise<Activity[]>; // NEW
   getRentAgreementsEndingSoon(days: number): Promise<any[]>;
-
   getSellAgreementsWithPendingBrokerage(limit?: number): Promise<any[]>;
+
+  // Apartment operations
+  getApartments(): Promise<Apartment[]>;
+  getApartment(id: string): Promise<Apartment | undefined>;
+  createApartment(apartment: InsertApartment): Promise<Apartment>;
+  updateApartment(id: string, apartment: Partial<InsertApartment>): Promise<Apartment>;
+  deleteApartment(id: string): Promise<void>;
 
   // ✅ Activity Logs (new)
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -215,6 +225,7 @@ export interface IStorage {
     transactionType?: string;
     status?: string;
     caste?: string; // ✅ ADD
+    apartmentId?: string;
   }): Promise<PropertiesWithTotal>;
 
   getPropertyImagesByIds(ids: string[]): Promise<{ id: string; images: string[] | null }[]>;
@@ -743,12 +754,14 @@ export class DatabaseStorage implements IStorage {
     transactionType?: string;
     status?: string;
     caste?: string; // ✅ ADD
+    apartmentId?: string;
   }): Promise<PropertiesWithTotal> {
     const limit = params?.limit;
     const offset = params?.offset;
     const search = params?.search?.trim();
     const transactionType = params?.transactionType?.trim();
     const status = params?.status;
+    const apartmentId = params?.apartmentId;
     const caste = params?.caste?.trim(); // ✅ ADD
 
     const baseQuery = db
@@ -775,6 +788,7 @@ export class DatabaseStorage implements IStorage {
         transactionType: properties.transactionType,
         status: properties.status,
         ownerId: properties.ownerId,
+        apartmentId: properties.apartmentId,
         locationPriority: properties.locationPriority,
         agreementStartDate: properties.agreementStartDate,
         agreementEndDate: properties.agreementEndDate,
@@ -829,6 +843,9 @@ export class DatabaseStorage implements IStorage {
     if (status && status !== "all") {
       conditions.push(eq(properties.status, status));
     }
+    if (apartmentId && apartmentId !== "all") {
+      conditions.push(eq(properties.apartmentId, apartmentId));
+    }
 
     if (caste && caste !== "all") {
       conditions.push(eq(properties.caste, caste)); // ✅ ADD
@@ -872,6 +889,7 @@ export class DatabaseStorage implements IStorage {
         transactionType: properties.transactionType,
         status: properties.status,
         ownerId: properties.ownerId,
+        apartmentId: properties.apartmentId,
         locationPriority: properties.locationPriority,
 
         images: properties.images,
@@ -1249,6 +1267,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(projects).where(eq(projects.id, id));
   }
 
+
   // Client operations
   async getClients(): Promise<Client[]> {
     return await db.select().from(clients).orderBy(desc(clients.createdAt));
@@ -1299,6 +1318,38 @@ export class DatabaseStorage implements IStorage {
   async getRecentActivities(limit: number = 10): Promise<Activity[]> {
     return await db.select().from(activities).orderBy(desc(activities.createdAt)).limit(limit);
   }
+
+  // Apartment operations
+
+  async getApartments(): Promise<Apartment[]> {
+    return await db.select().from(apartments).orderBy(desc(apartments.createdAt));
+  }
+
+  async getApartment(id: string): Promise<Apartment | undefined> {
+    const [apt] = await db.select().from(apartments).where(eq(apartments.id, id));
+    return apt;
+  }
+
+  async createApartment(apartment: InsertApartment): Promise<Apartment> {
+    const [apt] = await db.insert(apartments).values(apartment).returning();
+    return apt;
+  }
+
+  async updateApartment(id: string, apartment: Partial<InsertApartment>): Promise<Apartment> {
+    const [apt] = await db
+      .update(apartments)
+      .set({ ...apartment, updatedAt: new Date() })
+      .where(eq(apartments.id, id))
+      .returning();
+
+    if (!apt) throw new Error("Apartment not found");
+    return apt;
+  }
+
+  async deleteApartment(id: string): Promise<void> {
+    await db.delete(apartments).where(eq(apartments.id, id));
+  }
+
 
   // Contact submission operations
   async getContactSubmissions(): Promise<ContactSubmission[]> {

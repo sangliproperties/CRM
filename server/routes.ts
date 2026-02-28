@@ -8,12 +8,13 @@ import { randomUUID } from "crypto";
 import { ZodError } from "zod";
 import multer from "multer";
 
-import { setupAuth } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import {
   insertLeadSchema,
   insertPropertySchema,
   insertOwnerSchema,
+  insertApartmentSchema,
   insertClientSchema,
   insertActivitySchema,
   insertContactSubmissionSchema,
@@ -55,25 +56,6 @@ const upload = multer({
     },
   }),
 });
-
-const isAuthenticated = (req: any, res: any, next: any) => {
-  // allow session-based login OR existing auth
-  const sid =
-    req.user?.claims?.sub ||
-    req.session?.user?.id ||
-    req.session?.passport?.user ||
-    null;
-
-  if (!sid) return res.status(401).json({ message: "Unauthorized" });
-
-  // normalize for the rest of your routes that expect req.user.claims.sub
-  req.user = req.user || {};
-  req.user.claims = req.user.claims || {};
-  req.user.claims.sub = String(sid);
-
-  next();
-};
-
 
 async function sendOwnerRegistrationEmail(to: string, ownerName?: string | null) {
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
@@ -147,40 +129,6 @@ function inferEntity(pathname: string) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
-
-  app.post("/api/login", async (req: any, res) => {
-    try {
-      const loginId = String(req.body?.email || req.body?.username || "").trim();
-      if (!loginId) return res.status(400).json({ message: "Email is required" });
-
-      const allUsers = await storage.getAllUsers();
-      const dbUser = allUsers.find(
-        (u) => (u.email || "").toLowerCase() === loginId.toLowerCase()
-      );
-
-      if (!dbUser) return res.status(401).json({ message: "Invalid user" });
-
-      // save into session
-      req.session.user = {
-        id: dbUser.id,
-        role: dbUser.role,
-        email: dbUser.email,
-        firstName: (dbUser as any).firstName,
-        lastName: (dbUser as any).lastName,
-      };
-
-      // also normalize req.user for same request
-      req.user = req.user || {};
-      req.user.claims = req.user.claims || {};
-      req.user.claims.sub = String(dbUser.id);
-
-      return res.json({ ok: true, user: req.session.user });
-    } catch (e) {
-      console.error("Login error:", e);
-      return res.status(500).json({ message: "Login failed" });
-    }
-  });
-
 
   // ✅ Server-wide activity logger for all authenticated users
   app.use("/api", (req, res, next) => {
@@ -1118,13 +1066,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const status = typeof req.query.status === "string" ? req.query.status : undefined;
       const caste = typeof req.query.caste === "string" ? req.query.caste : undefined; // ✅ ADD
 
+      const apartmentId =
+        typeof req.query.apartmentId === "string" ? req.query.apartmentId : undefined;
+
       const { items, total } = await storage.getPropertiesWithTotal({
         limit: safePageSize,
         offset,
         search,
         transactionType,
         status,
-        caste, // ✅ ADD
+        apartmentId,
       });
 
       res.json({
@@ -1410,6 +1361,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete owner" });
     }
   });
+
+  // Apartment routes
+  app.get("/api/apartments", async (req, res) => {
+    try {
+      const apartments = await storage.getApartments();
+      res.json(apartments);
+    } catch (error) {
+      console.error("Error fetching apartments:", error);
+      res.status(500).json({ message: "Failed to fetch apartments" });
+    }
+  });
+
+  app.post("/api/apartments", async (req, res) => {
+    try {
+      const validated = insertApartmentSchema.parse(req.body);
+      const apt = await storage.createApartment(validated);
+      res.status(201).json(apt);
+    } catch (error) {
+      console.error("Error creating apartment:", error);
+      res.status(400).json({ message: "Failed to create apartment" });
+    }
+  });
+
+  app.patch("/api/apartments/:id", async (req, res) => {
+    try {
+      const validated = insertApartmentSchema.partial().parse(req.body);
+      const apt = await storage.updateApartment(req.params.id, validated);
+      res.json(apt);
+    } catch (error) {
+      console.error("Error updating apartment:", error);
+      res.status(400).json({ message: "Failed to update apartment" });
+    }
+  });
+
+  app.delete("/api/apartments/:id", async (req, res) => {
+    try {
+      await storage.deleteApartment(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting apartment:", error);
+      res.status(500).json({ message: "Failed to delete apartment" });
+    }
+  });
+
 
   // Project Owner routes
   app.get("/api/project-owners", async (req, res) => {
@@ -2037,7 +2032,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dashboard routes
   app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
-
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -2134,7 +2128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/lead-sources", isAuthenticated, async (req: any, res) => {
+  app.get("/api/dashboard/lead-sources", async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -2180,7 +2174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/recent-activities", isAuthenticated, async (req: any, res) => {
+  app.get("/api/dashboard/recent-activities", async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);

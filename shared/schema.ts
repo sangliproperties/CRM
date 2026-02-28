@@ -136,6 +136,23 @@ export const ownersRelations = relations(owners, ({ many }) => ({
   properties: many(properties),
 }));
 
+// Apartments table
+export const apartments = pgTable("apartments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  address: text("address"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertApartmentSchema = z.object({
+  name: z.string().min(1, "Apartment Name is required"),
+  address: z.string().optional().or(z.literal("")),
+});
+
+export type InsertApartment = z.infer<typeof insertApartmentSchema>;
+export type Apartment = typeof apartments.$inferSelect;
+
 // Projects table
 export const projects = pgTable("projects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -559,6 +576,7 @@ export const properties = pgTable("properties", {
   status: varchar("status").notNull().default("Available"),
   furnishingStatus: text("furnishing_status"),
   ownerId: varchar("owner_id").references(() => owners.id),
+  apartmentId: varchar("apartment_id").references(() => apartments.id),
   images: text("images").array().default(sql`ARRAY[]::text[]`),
   description: text("description"),
   officeMessage: text("office_message"),
@@ -648,6 +666,11 @@ export const insertPropertySchema = createInsertSchema(properties)
     balconies: z.string().optional().nullable(),
     halls: z.string().optional().nullable(),
     codeNo: z.string().trim().optional().nullable(),
+    apartmentId: z
+      .string()
+      .optional()
+      .nullable()
+      .transform((v) => (v === "" ? null : v)),
     caste: z.enum(["All Caste", "Restricted"]).optional().nullable(),
   });
 

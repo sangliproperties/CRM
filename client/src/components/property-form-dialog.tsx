@@ -31,8 +31,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Property, Owner } from "@shared/schema";
+import type { Property, Owner, Apartment } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
+
+
+
 
 // Add this import or type definition for DocumentAttachment
 export type DocumentAttachment = {
@@ -76,6 +79,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Eye, Download, Trash2 } from "lucide-react";
+
 
 
 /**
@@ -130,11 +134,19 @@ export function PropertyFormDialog({
     queryKey: ["/api/owners"],
   });
 
+  const { data: apartments } = useQuery<Apartment[]>({
+    queryKey: ["/api/apartments"],
+  });
+
   const [messageTarget, setMessageTarget] = useState<"office" | "owner" | "">(
     "",
   );
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [ownerSearch, setOwnerSearch] = useState("");
+
+  const [apartmentOpen, setApartmentOpen] = useState(false);
+  const [apartmentSearch, setApartmentSearch] = useState("");
+
   // 🔹 Document upload state (for PDFs)
   const [docTitle, setDocTitle] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
@@ -210,6 +222,7 @@ export function PropertyFormDialog({
       carpetArea: "",
       totalFloor: "",
       ownerId: undefined,
+      apartmentId: undefined,
       locationPriority: undefined,   // ⭐ new
       agreementStartDate: "",
       agreementEndDate: "",
@@ -278,6 +291,7 @@ export function PropertyFormDialog({
         transactionType: property.transactionType ?? undefined,
         status: property.status ?? "Available",
         ownerId: property.ownerId ?? undefined,
+        apartmentId: property.apartmentId ?? undefined,
         agreementStartDate: property.agreementStartDate
           ? new Date(property.agreementStartDate as any)
             .toISOString()
@@ -336,6 +350,7 @@ export function PropertyFormDialog({
         // 🔹 NEW
         furnishingStatus: undefined,
         ownerId: undefined,
+        apartmentId: undefined,
         locationPriority: undefined,   // ⭐
         agreementStartDate: "",
         agreementEndDate: "",
@@ -725,6 +740,80 @@ export function PropertyFormDialog({
                   </FormItem>
                 )}
               />
+
+              {/* Apartment (combobox) */}
+              <FormField
+                control={form.control}
+                name="apartmentId"
+                render={({ field }) => {
+                  const selectedApartment = apartments?.find((a) => a.id === field.value);
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Apartment (Optional)</FormLabel>
+
+                      <Popover
+                        open={apartmentOpen}
+                        onOpenChange={(open) => {
+                          setApartmentOpen(open);
+                          if (open) setApartmentSearch("");
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between"
+                            data-testid="select-property-apartment"
+                          >
+                            {selectedApartment ? selectedApartment.name : "No Apartment"}
+                          </Button>
+                        </PopoverTrigger>
+
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search apartment name..."
+                              value={apartmentSearch}
+                              onValueChange={setApartmentSearch}
+                            />
+                            <CommandEmpty>No apartment found.</CommandEmpty>
+
+                            <CommandGroup>
+                              <CommandItem
+                                value="none"
+                                onSelect={() => {
+                                  field.onChange(undefined);
+                                  setApartmentOpen(false);
+                                }}
+                              >
+                                No Apartment
+                              </CommandItem>
+
+                              {apartments?.map((apt) => (
+                                <CommandItem
+                                  key={apt.id}
+                                  value={`${apt.name} ${apt.address ?? ""}`}
+                                  onSelect={() => {
+                                    field.onChange(apt.id);
+                                    setApartmentOpen(false);
+                                  }}
+                                >
+                                  {apt.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
 
               {/* ---------------- AREA DETAILS SECTION ---------------- */}
               <div className="md:col-span-2 border p-4 rounded-lg bg-muted/30">

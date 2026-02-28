@@ -41,6 +41,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { getDefaultPropertyImage } from "@/lib/defaultPropertyImages";
 import WorldMapBg from "@/components/world-map-bg";
+import type { Apartment } from "@shared/schema";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { Check } from "lucide-react";
+
 
 const statusColors: Record<string, string> = {
   Available: "bg-green-100 text-green-700 hover:bg-green-100",
@@ -70,6 +81,13 @@ export default function Properties() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const debounceDelay = 350;
   const minSearchLength = 2;
+  const { data: apartments } = useQuery<Apartment[]>({
+    queryKey: ["/api/apartments"],
+  });
+
+  const [apartmentOpen, setApartmentOpen] = useState(false);
+  const [apartmentSearch, setApartmentSearch] = useState("");
+  const [selectedApartmentId, setSelectedApartmentId] = useState<string>("all");
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -110,7 +128,7 @@ export default function Properties() {
   // reset to page 1 when search term or filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearchTerm, transactionTypeFilter, statusFilter, casteFilter]);
+  }, [debouncedSearchTerm, transactionTypeFilter, statusFilter, selectedApartmentId]);
 
   const {
     data: propertiesResponse,
@@ -126,6 +144,7 @@ export default function Properties() {
       transactionTypeFilter,
       statusFilter,
       casteFilter, // ✅ ADD
+      selectedApartmentId,
     ],
     queryFn: async () => {
       const url =
@@ -133,6 +152,7 @@ export default function Properties() {
         `&search=${encodeURIComponent(hasSearch ? debouncedSearchTerm : "")}` +
         `&transactionType=${encodeURIComponent(transactionTypeFilter)}` +
         `&status=${encodeURIComponent(statusFilter)}` +
+        `&apartmentId=${encodeURIComponent(selectedApartmentId)}` + // ✅ ADD
         `&caste=${encodeURIComponent(casteFilter)}`; // ✅ ADD
 
       const res = await fetch(url);
@@ -381,6 +401,65 @@ export default function Properties() {
                 <SelectItem value="Rented">Rented</SelectItem>
               </SelectContent>
             </Select>
+            <Popover
+              open={apartmentOpen}
+              onOpenChange={(open) => {
+                setApartmentOpen(open);
+                if (open) setApartmentSearch("");
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  className="w-full lg:w-[220px] justify-between"
+                  data-testid="select-apartment-filter"
+                >
+                  {selectedApartmentId === "all"
+                    ? "All Apartments"
+                    : apartments?.find((a) => a.id === selectedApartmentId)?.name ?? "Select Apartment"}
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-full lg:w-[220px] p-0">
+                <Command>
+                  <CommandInput
+                    placeholder="Search apartment..."
+                    value={apartmentSearch}
+                    onValueChange={setApartmentSearch}
+                  />
+                  <CommandEmpty>No apartment found.</CommandEmpty>
+
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        setSelectedApartmentId("all");
+                        setApartmentOpen(false);
+                      }}
+                    >
+                      <Check className={`mr-2 h-4 w-4 ${selectedApartmentId === "all" ? "opacity-100" : "opacity-0"}`} />
+                      All Apartments
+                    </CommandItem>
+
+                    {apartments?.map((apt) => (
+                      <CommandItem
+                        key={apt.id}
+                        value={`${apt.name} ${apt.address ?? ""}`}
+                        onSelect={() => {
+                          setSelectedApartmentId(apt.id);
+                          setApartmentOpen(false);
+                        }}
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${selectedApartmentId === apt.id ? "opacity-100" : "opacity-0"}`} />
+                        {apt.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
             <Select value={casteFilter} onValueChange={setCasteFilter}>
               <SelectTrigger className="w-[180px]">

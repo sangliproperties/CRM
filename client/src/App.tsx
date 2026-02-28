@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Leads from "@/pages/leads";
 import Properties from "@/pages/properties";
 import Owners from "@/pages/owners";
+import Apartments from "@/pages/apartments";
 import ProjectOwners from "@/pages/project-owners";
 import Projects from "@/pages/projects";
 import Clients from "@/pages/clients";
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/leads" component={Leads} />
       <Route path="/properties" component={Properties} />
       <Route path="/owners" component={Owners} />
+      <Route path="/apartments" component={Apartments} />
       <Route path="/project-owners" component={ProjectOwners} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:projectId/status" component={ProjectStatus} />

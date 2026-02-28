@@ -64,6 +64,12 @@ const menuItems = [
     roles: ["Admin", "Property Manager", "Marketing Executive", "SuperAdmin"],
   },
   {
+    title: "Apartments",
+    url: "/apartments",
+    icon: Building2, // or another lucide icon you like
+    roles: ["Admin","SuperAdmin"],
+  },
+  {
     title: "Projects",
     url: "/projects",
     icon: FolderKanban, // or Building2
