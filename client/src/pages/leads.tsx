@@ -351,7 +351,7 @@ export default function Leads() {
                               )}
                             </Button>
 
-                            <Button
+                         {/*  <Button
                               size="icon"
                               variant="ghost"
                               onClick={() => handleWhatsApp(lead.phone)}
@@ -359,9 +359,9 @@ export default function Leads() {
                               data-testid={`button-whatsapp-${lead.id}`}
                             >
                               <MessageCircle className="w-4 h-4 text-green-600" />
-                            </Button>
+                            </Button> */}
 
-                            {lead.email && (
+                            {/* {lead.email && (
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -371,7 +371,7 @@ export default function Leads() {
                               >
                                 <Mail className="w-4 h-4 text-blue-600" />
                               </Button>
-                            )}
+                            )} */}
 
                             <Button
                               size="icon"

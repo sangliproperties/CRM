@@ -37,7 +37,7 @@
     "role": "Marketing Executive",
     "firstName": "Ganesh",
     "lastName": "Shedbale",
-    "active": true
+    "active": false
   },
   {
     "email": "sujit11@sanglicrm.com",
@@ -45,7 +45,7 @@
     "role": "Marketing Executive",
     "firstName": "Sujit",
     "lastName": "Patil",
-    "active": true
+    "active": false
   },
   {
     "email": "sachin06@sanglicrm.com",
@@ -53,7 +53,7 @@
     "role": "Marketing Executive",
     "firstName": "Sachin",
     "lastName": "Pawar",
-    "active": true
+    "active": false
   },
   {
     "email": "sagar10@sanglicrm.com",
@@ -85,7 +85,7 @@
     "role": "Admin",
     "firstName": "Ravina",
     "lastName": "Pimpale",
-    "active": true
+    "active": false
   },
   {
     "email": "rasika03@sanglicrm.com",
@@ -110,5 +110,14 @@
     "firstName": "Shukriya",
     "lastName": "Navale",
     "active": true
+  },
+  {
+    "email": "Akshaya02@sanglicrm.com",
+    "password": "Akshaya02",
+    "role": "Admin",
+    "firstName": "Akshaya",
+    "lastName": "Sokate",
+    "active": true
   }
 ]
+
