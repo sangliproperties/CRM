@@ -367,6 +367,90 @@ export class PDFGenerator {
     doc.end();
   }
 
+  static async generatePropertiesReport(propertiesList: any[], res: Response) {
+    const doc = new PDFDocument({ margin: 50 });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=properties-report-${Date.now()}.pdf`
+    );
+
+    doc.pipe(res);
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(24)
+      .fillColor("#1e40af")
+      .text("Sangli Properties LLP", { align: "center" })
+      .moveDown(0.5);
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .fillColor("#000000")
+      .text("Properties Report", { align: "center" })
+      .moveDown(1);
+
+    doc.font("Helvetica").fontSize(12).fillColor("#6b7280");
+    doc.text(`Total Properties: ${propertiesList.length}`);
+    doc.text(`Report Generated: ${new Date().toLocaleDateString("en-IN")}`);
+    doc.moveDown(1);
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .fillColor("#6b7280")
+      .text("Property Details", { underline: true });
+    doc.moveDown(0.5);
+
+    propertiesList.forEach((p, index) => {
+      // Add a page break if near bottom
+      if (doc.y > 720) doc.addPage();
+
+      if (index > 0) {
+        doc.moveDown(0.5);
+        doc
+          .strokeColor("#e5e7eb")
+          .moveTo(50, doc.y)
+          .lineTo(550, doc.y)
+          .stroke();
+        doc.moveDown(0.5);
+      }
+
+      const priceText = formatPriceINR(p.price) ?? (p.price ? String(p.price) : "-");
+
+      doc.font("Helvetica-Bold").fontSize(12).fillColor("#000000");
+      doc.text(`${index + 1}. ${p.title || "Property"}`);
+
+      doc.font("Helvetica").fontSize(11).fillColor("#000000");
+      if (p.codeNo) doc.text(`Code No: ${p.codeNo}`);
+      if (p.transactionType) doc.text(`Transaction: ${p.transactionType}`);
+      if (p.propertyType) doc.text(`Type: ${p.propertyType}`);
+      if (p.status) doc.text(`Status: ${p.status}`);
+      doc.text(`Price: ${priceText}`);
+
+      // Common optional fields
+      if (p.location) doc.text(`Location: ${p.location}`);
+      if (p.address) doc.text(`Address: ${p.address}`);
+      if (p.city) doc.text(`City: ${p.city}`);
+      if (p.area) doc.text(`Area: ${p.area}`);
+      if (p.bedrooms !== undefined && p.bedrooms !== null) doc.text(`Bedrooms: ${p.bedrooms}`);
+      if (p.bathrooms !== undefined && p.bathrooms !== null) doc.text(`Bathrooms: ${p.bathrooms}`);
+      if (p.furnishing) doc.text(`Furnishing: ${p.furnishing}`);
+
+      // Owner (your storage list includes ownerName)
+      if (p.ownerName) doc.text(`Owner: ${p.ownerName}`);
+
+      // Apartment (if you later include apartmentName in list)
+      if (p.apartmentName) doc.text(`Apartment: ${p.apartmentName}`);
+
+      doc.moveDown(0.2);
+    });
+
+    doc.end();
+  }
+
   // ---------------------------------------------------------------------------
   // Sales summary report
   // ---------------------------------------------------------------------------

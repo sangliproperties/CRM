@@ -130,6 +130,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // ✅ Parse optional report date range from querystring (YYYY-MM-DD)
+  const parseDateRange = (req: any) => {
+    const startDateStr =
+      typeof req.query.startDate === "string" ? req.query.startDate : undefined;
+    const endDateStr =
+      typeof req.query.endDate === "string" ? req.query.endDate : undefined;
+
+    // inclusive full-day range
+    const startDate = startDateStr ? new Date(`${startDateStr}T00:00:00.000Z`) : undefined;
+    const endDate = endDateStr ? new Date(`${endDateStr}T23:59:59.999Z`) : undefined;
+
+    return { startDate, endDate };
+  };
+
+
   // ✅ Server-wide activity logger for all authenticated users
   app.use("/api", (req, res, next) => {
     const startTime = Date.now();
@@ -436,8 +451,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === "Property Manager") {
         return res.status(403).json({ message: "Access denied" });
       }
-
-      const allLeads = await storage.getLeads();
+      const { startDate, endDate } = parseDateRange(req);
+      const allLeads = await storage.getLeads({ startDate, endDate });
 
       // Sales Agents and Marketing Executives only see leads assigned to them
       if (user.role === "Sales Agent" || user.role === "Marketing Executive") {
@@ -1068,7 +1083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const apartmentId =
         typeof req.query.apartmentId === "string" ? req.query.apartmentId : undefined;
-
+      const { startDate, endDate } = parseDateRange(req);
       const { items, total } = await storage.getPropertiesWithTotal({
         limit: safePageSize,
         offset,
@@ -1076,6 +1091,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactionType,
         status,
         apartmentId,
+        startDate,
+        endDate,
       });
 
       res.json({
@@ -2120,7 +2137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/dashboard/sales", async (req, res) => {
     try {
-      const salesData = await storage.getSalesData();
+      const { startDate, endDate } = parseDateRange(req);
+      const salesData = await storage.getSalesData({ startDate, endDate });
       res.json(salesData);
     } catch (error) {
       console.error("Error fetching sales data:", error);
@@ -2278,7 +2296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/reports/summary", isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const { startDate, endDate } = parseDateRange(req);
+      const stats = await storage.getDashboardStats({ startDate, endDate });
       const topAgents = await storage.getTopAgents();
       const conversionRate =
         stats.totalLeads > 0
@@ -2304,6 +2323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/export/:type", isAuthenticated, async (req, res) => {
     try {
       const { type } = req.params;
+      const { startDate, endDate } = parseDateRange(req);
       let csvData = "";
 
       const csvEscape = (value: any) => {
@@ -2320,7 +2340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       if (type === "leads") {
-        const leads = await storage.getLeads();
+        const leads = await storage.getLeads({ startDate, endDate });
         csvData = "Name,Phone,Email,Source,Budget,Location,Stage\n";
         leads.forEach((lead) => {
           csvData += `${lead.name},${lead.phone},${lead.email || ""},${lead.source
@@ -2329,7 +2349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else if (type === "properties") {
         // ✅ fetch all properties (your storage.getProperties() already returns full dataset if no limit)
-        const properties = await storage.getProperties();
+        const properties = await storage.getProperties({ startDate, endDate });
 
         if (!properties || properties.length === 0) {
           csvData = "No data\n";
@@ -2344,7 +2364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } else if (type === "sales") {
-        const stats = await storage.getDashboardStats();
+        const stats = await storage.getDashboardStats({ startDate, endDate });
         csvData = "Metric,Value\n";
         csvData += `Total Leads,${stats.totalLeads}\n`;
         csvData += `Closed Deals,${stats.closedDeals}\n`;
@@ -2985,12 +3005,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/pdf/leads", isAuthenticated, async (req, res) => {
     try {
-      const leads = await storage.getLeads();
+      const { startDate, endDate } = parseDateRange(req);
+      const leads = await storage.getLeads({ startDate, endDate });
       await PDFGenerator.generateLeadsReport(leads, res);
     } catch (error) {
       console.error("Error generating leads report:", error);
       if (!res.headersSent) {
         res.status(500).json({ message: "Failed to generate leads report" });
+      }
+    }
+  });
+
+  app.get("/api/pdf/properties", isAuthenticated, async (req, res) => {
+    try {
+      // IMPORTANT: calling without params returns ALL properties in your current storage.ts
+      const { startDate, endDate } = parseDateRange(req);
+      const properties = await storage.getProperties({ startDate, endDate });
+      await PDFGenerator.generatePropertiesReport(properties, res);
+    } catch (error) {
+      console.error("Error generating properties report:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to generate properties report" });
       }
     }
   });
@@ -3027,10 +3062,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/pdf/sales-summary", isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
-      const salesData = await storage.getSalesData();
-      const topAgents = await storage.getTopAgents();
+        const { startDate, endDate } = parseDateRange(req);
 
+    const stats = await storage.getDashboardStats({ startDate, endDate });
+    const salesData = await storage.getSalesData({ startDate, endDate });
+    const topAgents = await storage.getTopAgents(); // keep as-is unless you add date filter support
       const summaryData = {
         totalLeads: stats.totalLeads,
         activeLeads: stats.activeLeads,

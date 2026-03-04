@@ -183,7 +183,7 @@ export interface IStorage {
   getProjectDocument(id: string): Promise<ProjectDocument | undefined>;
 
   // Lead operations
-  getLeads(): Promise<Lead[]>;
+  getLeads(filters?: { startDate?: Date; endDate?: Date }): Promise<Lead[]>;
   getLead(id: string): Promise<Lead | undefined>;
   findLeadByPhone(phone: string): Promise<Lead | undefined>; // 🔹 NEW
   createLead(lead: InsertLead): Promise<Lead>;
@@ -214,7 +214,10 @@ export interface IStorage {
     search?: string;
     transactionType?: string;
     status?: string;
-    caste?: string; // ✅ ADD
+    caste?: string;
+    apartmentId?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<PropertyWithOwner[]>;
 
   // ✅ NEW: return items + total
@@ -224,8 +227,10 @@ export interface IStorage {
     search?: string;
     transactionType?: string;
     status?: string;
-    caste?: string; // ✅ ADD
+    caste?: string;
     apartmentId?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<PropertiesWithTotal>;
 
   getPropertyImagesByIds(ids: string[]): Promise<{ id: string; images: string[] | null }[]>;
@@ -268,8 +273,8 @@ export interface IStorage {
   createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission>;
 
   // Dashboard stats
-  getDashboardStats(): Promise<any>;
-  getSalesData(): Promise<any[]>;
+  getDashboardStats(filters?: { startDate?: Date; endDate?: Date }): Promise<any>;
+  getSalesData(filters?: { startDate?: Date; endDate?: Date }): Promise<any[]>;
   getLeadSourceData(): Promise<any[]>;
   getTopAgents(): Promise<any[]>;
   getDailyExecutiveActivities(): Promise<any[]>;
@@ -291,6 +296,15 @@ export interface IStorage {
   createDocument(document: InsertDocumentAttachment): Promise<DocumentAttachment>;
   updateDocument(id: string, document: Partial<InsertDocumentAttachment>): Promise<DocumentAttachment>;
   deleteDocument(id: string): Promise<void>;
+}
+
+// Shared money parser (supports ₹, commas, spaces, etc.)
+function parseMoney(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  const s = String(value);
+  const digitsOnly = s.replace(/[^\d]/g, ""); // keep only 0-9
+  if (!digitsOnly) return 0;
+  return Number(digitsOnly);
 }
 
 export class DatabaseStorage implements IStorage {
@@ -693,8 +707,18 @@ export class DatabaseStorage implements IStorage {
 
 
   // Lead operations
-  async getLeads(): Promise<Lead[]> {
-    return await db.select().from(leads).orderBy(desc(leads.createdAt));
+  async getLeads(filters?: { startDate?: Date; endDate?: Date }): Promise<Lead[]> {
+    const conds: any[] = [];
+    if (filters?.startDate) conds.push(gte(leads.createdAt, filters.startDate));
+    if (filters?.endDate) conds.push(lte(leads.createdAt, filters.endDate));
+
+    const where = conds.length ? and(...conds) : undefined;
+
+    return await db
+      .select()
+      .from(leads)
+      .where(where as any)
+      .orderBy(desc(leads.createdAt));
   }
 
   async getLead(id: string): Promise<Lead | undefined> {
@@ -741,6 +765,10 @@ export class DatabaseStorage implements IStorage {
     search?: string;
     transactionType?: string;
     status?: string;
+    caste?: string;
+    apartmentId?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<PropertyWithOwner[]> {
     const result = await this.getPropertiesWithTotal(params);
     return result.items;
@@ -753,8 +781,10 @@ export class DatabaseStorage implements IStorage {
     search?: string;
     transactionType?: string;
     status?: string;
-    caste?: string; // ✅ ADD
+    caste?: string;
     apartmentId?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<PropertiesWithTotal> {
     const limit = params?.limit;
     const offset = params?.offset;
@@ -850,6 +880,14 @@ export class DatabaseStorage implements IStorage {
     if (caste && caste !== "all") {
       conditions.push(eq(properties.caste, caste)); // ✅ ADD
     }
+
+    if (params?.startDate) {
+      conditions.push(gte(properties.createdAt, params.startDate));
+    }
+    if (params?.endDate) {
+      conditions.push(lte(properties.createdAt, params.endDate));
+    }
+
 
     const whereQuery = conditions.length > 0 ? baseQuery.where(and(...conditions)) : baseQuery;
 
@@ -1362,19 +1400,88 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard stats
-  async getDashboardStats(): Promise<any> {
-    const [totalLeadsResult] = await db.select({ count: count() }).from(leads);
-    const [activeLeadsResult] = await db.select({ count: count() }).from(leads).where(sql`${leads.stage} != 'Closed'`);
-    const [closedDealsResult] = await db.select({ count: count() }).from(leads).where(eq(leads.stage, "Closed"));
-    const [totalPropertiesResult] = await db.select({ count: count() }).from(properties);
-    const [availablePropertiesResult] = await db.select({ count: count() }).from(properties).where(eq(properties.status, "Available"));
+  async getDashboardStats(filters?: { startDate?: Date; endDate?: Date }): Promise<any> {
+    const leadConds: any[] = [];
+    const propConds: any[] = [];
 
-    const soldProperties = await db.select({ price: properties.price }).from(properties).where(eq(properties.status, "Sold"));
+    if (filters?.startDate) {
+      leadConds.push(gte(leads.createdAt, filters.startDate));
+      propConds.push(gte(properties.createdAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      leadConds.push(lte(leads.createdAt, filters.endDate));
+      propConds.push(lte(properties.createdAt, filters.endDate));
+    }
 
-    const [rentPropertiesResult] = await db.select({ count: count() }).from(properties).where(eq(properties.transactionType, "Rent"));
-    const [sellPropertiesResult] = await db.select({ count: count() }).from(properties).where(eq(properties.transactionType, "Sell"));
+    const leadWhere = leadConds.length ? and(...leadConds) : undefined;
+    const propWhere = propConds.length ? and(...propConds) : undefined;
 
-    const totalRevenue = soldProperties.reduce((sum, prop) => sum + Number(prop.price), 0);
+    const [totalLeadsResult] = await db.select({ count: count() }).from(leads).where(leadWhere as any);
+
+    const [activeLeadsResult] = await db
+      .select({ count: count() })
+      .from(leads)
+      .where(
+        and(
+          sql`${leads.stage} != 'Closed'`,
+          ...(leadConds.length ? [and(...leadConds)] : [])
+        ) as any
+      );
+
+    const [closedDealsResult] = await db
+      .select({ count: count() })
+      .from(leads)
+      .where(
+        and(
+          eq(leads.stage, "Closed"),
+          ...(leadConds.length ? [and(...leadConds)] : [])
+        ) as any
+      );
+
+    const [totalPropertiesResult] = await db.select({ count: count() }).from(properties).where(propWhere as any);
+
+    const [availablePropertiesResult] = await db
+      .select({ count: count() })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.status, "Available"),
+          ...(propConds.length ? [and(...propConds)] : [])
+        ) as any
+      );
+
+    const [rentPropertiesResult] = await db
+      .select({ count: count() })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.transactionType, "Rent"),
+          ...(propConds.length ? [and(...propConds)] : [])
+        ) as any
+      );
+
+    const [sellPropertiesResult] = await db
+      .select({ count: count() })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.transactionType, "Sell"),
+          ...(propConds.length ? [and(...propConds)] : [])
+        ) as any
+      );
+
+    // ✅ Total Revenue (Sold + Rented) using created_at filter
+    const revenueProps = await db
+      .select({ price: properties.price })
+      .from(properties)
+      .where(
+        and(
+          sql`${properties.status} IN ('Sold', 'Rented')`,
+          ...(propConds.length ? [and(...propConds)] : [])
+        ) as any
+      );
+
+    const totalRevenue = revenueProps.reduce((sum, r) => sum + parseMoney(r.price), 0);
 
     return {
       totalLeads: totalLeadsResult.count,
@@ -1388,16 +1495,33 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getSalesData(): Promise<any[]> {
-    const soldProperties = await db.select({ createdAt: properties.createdAt, price: properties.price }).from(properties).where(eq(properties.status, "Sold"));
+  async getSalesData(filters?: { startDate?: Date; endDate?: Date }): Promise<any[]> {
+    const revenueProperties = await db
+      .select({
+        updatedAt: properties.updatedAt,
+        createdAt: properties.createdAt,
+        price: properties.price,
+      })
+      .from(properties)
+      .where(
+        and(
+          sql`${properties.status} IN ('Sold', 'Rented')`,
+          ...(filters?.startDate ? [gte(properties.createdAt, filters.startDate)] : []),
+          ...(filters?.endDate ? [lte(properties.createdAt, filters.endDate)] : [])
+        )
+      );
 
     const monthlyData: { [key: string]: number } = {};
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    soldProperties.forEach((prop) => {
-      const date = new Date(prop.createdAt!);
+    revenueProperties.forEach((prop) => {
+      // Prefer updatedAt (closest to when it became Sold/Rented), fallback to createdAt
+      const dt = prop.updatedAt ?? prop.createdAt;
+      if (!dt) return;
+      const date = new Date(dt);
       const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      monthlyData[yearMonth] = (monthlyData[yearMonth] || 0) + Number(prop.price);
+      monthlyData[yearMonth] =
+        (monthlyData[yearMonth] || 0) + parseMoney(prop.price);
     });
 
     const currentDate = new Date();

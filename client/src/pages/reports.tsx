@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, TrendingUp, Users, Building2, FileDown } from "lucide-react";
@@ -10,15 +12,26 @@ import type { Lead, Property } from "@shared/schema";
 export default function Reports() {
   const { toast } = useToast();
 
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
+  const buildDateQuery = () => {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  };
+
   const { data: reportData, isLoading } = useQuery<any>({
     queryKey: ["/api/reports/summary"],
   });
 
   const handleExport = async (type: string) => {
     try {
-      const response = await fetch(`/api/reports/export/${type}`);
+      const response = await fetch(`/api/reports/export/${type}${buildDateQuery()}`);
       if (!response.ok) throw new Error("Export failed");
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -28,7 +41,7 @@ export default function Reports() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Success",
         description: `${type} report exported successfully`,
@@ -46,9 +59,9 @@ export default function Reports() {
     try {
       let data: any[] = [];
       let worksheetName = '';
-      
+
       if (type === 'leads') {
-        const response = await fetch('/api/leads');
+        const response = await fetch(`/api/leads${buildDateQuery()}`);
         if (!response.ok) throw new Error("Failed to fetch leads data");
         const leads: Lead[] = await response.json();
         worksheetName = 'Leads';
@@ -65,7 +78,7 @@ export default function Reports() {
           'Created At': lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '',
         }));
       } else if (type === 'properties') {
-        const response = await fetch('/api/properties');
+        const response = await fetch(`/api/properties${buildDateQuery()}`);
         if (!response.ok) throw new Error("Failed to fetch properties data");
         const properties: Property[] = await response.json();
         worksheetName = 'Properties';
@@ -82,7 +95,7 @@ export default function Reports() {
           'Created At': prop.createdAt ? new Date(prop.createdAt).toLocaleDateString() : '',
         }));
       } else if (type === 'sales') {
-        const response = await fetch('/api/dashboard/sales');
+        const response = await fetch(`/api/dashboard/sales${buildDateQuery()}`);
         if (!response.ok) throw new Error("Failed to fetch sales data");
         const salesData: any[] = await response.json();
         worksheetName = 'Sales';
@@ -95,9 +108,9 @@ export default function Reports() {
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, worksheetName);
-      
+
       XLSX.writeFile(workbook, `${type}_report_${new Date().toISOString().split('T')[0]}.xlsx`);
-      
+
       toast({
         title: "Success",
         description: `${type} report exported as Excel successfully`,
@@ -111,11 +124,11 @@ export default function Reports() {
     }
   };
 
-  const handlePDFExport = async (type: 'leads' | 'sales-summary') => {
+  const handlePDFExport = async (type: 'leads' | 'sales-summary' | 'properties') => {
     try {
-      const response = await fetch(`/api/pdf/${type}`);
+      const response = await fetch(`/api/pdf/${type}${buildDateQuery()}`);
       if (!response.ok) throw new Error("PDF export failed");
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -125,7 +138,7 @@ export default function Reports() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Success",
         description: `${type.replace('-', ' ')} PDF exported successfully`,
@@ -148,7 +161,7 @@ export default function Reports() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border border-card-border">
+        {/* <Card className="border border-card-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Leads Generated</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -160,9 +173,9 @@ export default function Reports() {
               <div className="text-2xl font-bold">{reportData?.totalLeads || 0}</div>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card className="border border-card-border">
+        {/* <Card className="border border-card-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Properties Listed</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -174,9 +187,9 @@ export default function Reports() {
               <div className="text-2xl font-bold">{reportData?.totalProperties || 0}</div>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card className="border border-card-border">
+        {/*  <Card className="border border-card-border">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -188,8 +201,54 @@ export default function Reports() {
               <div className="text-2xl font-bold">{reportData?.conversionRate || 0}%</div>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
+
+      <Card className="border border-card-border">
+        <CardHeader>
+          <CardTitle>Date Filter</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Exports will include records between below selected dates.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Start Date</label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                data-testid="input-report-start-date"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">End Date</label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                data-testid="input-report-end-date"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                data-testid="button-clear-report-dates"
+              >
+                Clear Dates
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Export Options */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -204,16 +263,16 @@ export default function Reports() {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button 
+            {/*    <Button 
               className="w-full" 
               onClick={() => handleExport('leads')}
               data-testid="button-export-leads-csv"
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
-            </Button>
-            <Button 
-              className="w-full" 
+            </Button> */}
+            <Button
+              className="w-full"
               variant="outline"
               onClick={() => handleExcelExport('leads')}
               data-testid="button-export-leads-excel"
@@ -221,8 +280,8 @@ export default function Reports() {
               <Download className="w-4 h-4 mr-2" />
               Export Excel
             </Button>
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               variant="outline"
               onClick={() => handlePDFExport('leads')}
               data-testid="button-export-leads-pdf"
@@ -244,15 +303,15 @@ export default function Reports() {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               onClick={() => handleExport('properties')}
               data-testid="button-export-properties-csv"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              Export Excel
             </Button>
-            <Button 
+            {/*  <Button 
               className="w-full" 
               variant="outline"
               onClick={() => handleExcelExport('properties')}
@@ -260,6 +319,15 @@ export default function Reports() {
             >
               <Download className="w-4 h-4 mr-2" />
               Export Excel
+            </Button> */}
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => handlePDFExport('properties')}
+              data-testid="button-export-properties-pdf"
+            >
+              <FileDown className="w-4 h-4 mr-2" />
+              Export PDF
             </Button>
           </CardContent>
         </Card>
@@ -275,16 +343,16 @@ export default function Reports() {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button 
+            {/* <Button 
               className="w-full" 
               onClick={() => handleExport('sales')}
               data-testid="button-export-sales-csv"
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
-            </Button>
-            <Button 
-              className="w-full" 
+            </Button> */}
+            <Button
+              className="w-full"
               variant="outline"
               onClick={() => handleExcelExport('sales')}
               data-testid="button-export-sales-excel"
@@ -292,8 +360,8 @@ export default function Reports() {
               <Download className="w-4 h-4 mr-2" />
               Export Excel
             </Button>
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               variant="outline"
               onClick={() => handlePDFExport('sales-summary')}
               data-testid="button-export-sales-pdf"
