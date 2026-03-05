@@ -115,6 +115,7 @@ export default function Properties() {
   // pagination state
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const [goToPageInput, setGoToPageInput] = useState<string>("");
 
   // search mode (>=2 chars)
   const hasSearch = debouncedSearchTerm.trim().length >= minSearchLength;
@@ -240,6 +241,39 @@ export default function Properties() {
     : (Array.isArray(propertiesResponse) ? properties.length : (propertiesResponse as any)?.total) ?? properties.length;
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [totalPages]);
+
+  const handleGoToPage = () => {
+    const raw = goToPageInput.trim();
+
+    if (!raw) {
+      toast({
+        title: "Invalid page number",
+        description: `Enter a page number between 1 and ${totalPages}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const target = Number(raw);
+
+    if (!Number.isInteger(target) || target < 1 || target > totalPages) {
+      toast({
+        title: "Invalid page number",
+        description: `Page must be between 1 and ${totalPages}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPage(target);
+    setGoToPageInput(""); // optional: clear after success
+  };
 
   // ✅ What to render on screen:
   // - Search mode: paginate locally
@@ -838,6 +872,33 @@ export default function Properties() {
               >
                 Next
               </Button>
+
+              {/* Go to page */}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={goToPageInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    // allow only digits (or empty)
+                    if (v === "" || /^[0-9]+$/.test(v)) setGoToPageInput(v);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGoToPage();
+                  }}
+                  placeholder={`${page}`}
+                  className="w-16 h-9 text-center"
+                  inputMode="numeric"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isFetching || totalPages <= 1}
+                  onClick={handleGoToPage}
+                >
+                  Go
+                </Button>
+              </div>
+
             </div>
           )}
         </CardContent>

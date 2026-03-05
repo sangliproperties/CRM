@@ -118,6 +118,14 @@
     "firstName": "Akshaya",
     "lastName": "Sokate",
     "active": true
+  },
+  {
+    "email": "Yojana07@sanglicrm.com",
+    "password": "Yojana07",
+    "role": "Admin",
+    "firstName": "Yojana",
+    "lastName": "Kamble",
+    "active": true
   }
 ]
 
