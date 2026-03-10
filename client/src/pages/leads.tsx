@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
 import { LeadDetailDrawer } from "@/components/lead-detail-drawer";
-import type { Lead } from "@shared/schema";
+import type { Lead, User } from "@shared/schema";
+import authUsers from "@/config/users.json";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,9 +90,18 @@ function LeadNotesDropdown({ leadId }: { leadId: string }) {
 export default function Leads() {
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  const canAddLead = user?.role === "Admin" || user?.role === "SuperAdmin";
+  const canDeleteLead = user?.role === "Admin" || user?.role === "SuperAdmin";
+  const canViewExecutiveFilter = user?.role === "Admin" || user?.role === "SuperAdmin";
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [assignedExecutiveFilter, setAssignedExecutiveFilter] = useState<string>("all");
+
+  const [startDateFilter, setStartDateFilter] = useState<string>("");
+  const [endDateFilter, setEndDateFilter] = useState<string>("");
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
@@ -102,9 +112,49 @@ export default function Leads() {
     queryKey: ["/api/leads"],
   });
 
+  const { data: agents = [] } = useQuery<User[]>({
+    queryKey: ["/api/users/agents"],
+  });
+
   const toggleExpand = (leadId: string) => {
     setExpandedLeadId((prev) => (prev === leadId ? null : leadId));
   };
+
+  const activeMarketingExecutiveEmails = useMemo(() => {
+    return new Set(
+      authUsers
+        .filter(
+          (u) =>
+            u.role === "Marketing Executive" &&
+            u.active !== false
+        )
+        .map((u) => u.email.toLowerCase())
+    );
+  }, []);
+
+  const marketingExecutives = useMemo(() => {
+    return agents.filter((agent) => {
+      const email = (agent.email || "").toLowerCase();
+      return (
+        agent.role === "Marketing Executive" &&
+        activeMarketingExecutiveEmails.has(email)
+      );
+    });
+  }, [agents, activeMarketingExecutiveEmails]);
+
+  const executiveNameMap = useMemo(() => {
+    return marketingExecutives.reduce((acc, agent) => {
+      if (!agent.id) return acc;
+
+      const fullName = [agent.firstName, agent.lastName]
+        .filter((value): value is string => Boolean(value))
+        .join(" ")
+        .trim();
+
+      acc[agent.id] = fullName || agent.email || "-";
+      return acc;
+    }, {} as Record<string, string>);
+  }, [marketingExecutives]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -137,21 +187,53 @@ export default function Leads() {
     },
   });
 
-  const filteredLeads = leads?.filter((lead) => {
-    const lowerSearch = searchTerm.toLowerCase();
+  const filteredLeads =
+    leads?.filter((lead) => {
+      const lowerSearch = searchTerm.toLowerCase();
 
-    const matchesSearch =
-      lead.name.toLowerCase().includes(lowerSearch) ||
-      lead.phone.includes(searchTerm) ||
-      (lead.email?.toLowerCase().includes(lowerSearch) ?? false) ||
-      (lead.preferredLocation?.toLowerCase().includes(lowerSearch) ?? false) ||
-      (lead.comments?.toLowerCase().includes(lowerSearch) ?? false); // 🔍 search in comments/remark
+      const assignedExecutiveName = lead.assignedTo
+        ? executiveNameMap[lead.assignedTo]?.toLowerCase() || ""
+        : "";
 
-    const matchesStage = stageFilter === "all" || lead.stage === stageFilter;
-    const matchesSource = sourceFilter === "all" || lead.source === sourceFilter;
+      const matchesSearch =
+        lead.name.toLowerCase().includes(lowerSearch) ||
+        lead.phone.includes(searchTerm) ||
+        (lead.email?.toLowerCase().includes(lowerSearch) ?? false) ||
+        (lead.preferredLocation?.toLowerCase().includes(lowerSearch) ?? false) ||
+        (lead.comments?.toLowerCase().includes(lowerSearch) ?? false) ||
+        assignedExecutiveName.includes(lowerSearch);
 
-    return matchesSearch && matchesStage && matchesSource;
-  }) || [];
+      const matchesStage =
+        stageFilter === "all" || lead.stage === stageFilter;
+
+      const matchesSource =
+        sourceFilter === "all" || lead.source === sourceFilter;
+
+      const matchesAssignedExecutive =
+        assignedExecutiveFilter === "all" ||
+        lead.assignedTo === assignedExecutiveFilter;
+
+      const leadCreatedAt = lead.createdAt ? new Date(lead.createdAt) : null;
+
+      const startDate = startDateFilter ? new Date(startDateFilter) : null;
+      const endDate = endDateFilter ? new Date(endDateFilter) : null;
+
+      if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+      }
+
+      const matchesDateRange =
+        (!startDate || (leadCreatedAt && leadCreatedAt >= startDate)) &&
+        (!endDate || (leadCreatedAt && leadCreatedAt <= endDate));
+
+      return (
+        matchesSearch &&
+        matchesStage &&
+        matchesSource &&
+        matchesAssignedExecutive &&
+        matchesDateRange
+      );
+    }) || [];
 
 
   const handleEdit = (lead: Lead) => {
@@ -202,17 +284,19 @@ export default function Leads() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button
-            className="bg-gold hover:bg-gold/90 text-gold-foreground"
-            onClick={() => {
-              setSelectedLead(null);
-              setIsFormOpen(true);
-            }}
-            data-testid="button-add-lead"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+          {canAddLead && (
+            <Button
+              className="bg-gold hover:bg-gold/90 text-gold-foreground"
+              onClick={() => {
+                setSelectedLead(null);
+                setIsFormOpen(true);
+              }}
+              data-testid="button-add-lead"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Lead
+            </Button>
+          )}
         </div>
       </div>
 
@@ -238,6 +322,64 @@ export default function Leads() {
                 data-testid="input-search-leads"
               />
             </div>
+
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="w-full lg:w-[170px]"
+                data-testid="input-start-date-filter"
+              />
+              <Input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className="w-full lg:w-[170px]"
+                data-testid="input-end-date-filter"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStartDateFilter("");
+                  setEndDateFilter("");
+                }}
+                data-testid="button-clear-date-filter"
+              >
+                Clear
+              </Button>
+            </div>
+
+            {canViewExecutiveFilter && (
+              <Select
+                value={assignedExecutiveFilter}
+                onValueChange={setAssignedExecutiveFilter}
+              >
+                <SelectTrigger
+                  className="w-full lg:w-[220px]"
+                  data-testid="select-assigned-executive-filter"
+                >
+                  <SelectValue placeholder="Filter by executive" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Marketing Executives</SelectItem>
+                  {marketingExecutives.map((agent) => {
+                    const fullName = [agent.firstName, agent.lastName]
+                      .filter(Boolean)
+                      .join(" ")
+                      .trim();
+
+                    return (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {fullName || agent.email}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
+
             <Select value={stageFilter} onValueChange={setStageFilter}>
               <SelectTrigger className="w-full lg:w-[180px]" data-testid="select-stage-filter">
                 <SelectValue placeholder="Filter by stage" />
@@ -288,6 +430,7 @@ export default function Leads() {
                     <TableHead>Budget</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Comments / Remark</TableHead>
+                    <TableHead>Assigned To</TableHead>
                     <TableHead>Stage</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -327,6 +470,10 @@ export default function Leads() {
                         {/* ⭐ NEW COMMENTS/REMARK COLUMN */}
                         <TableCell>{lead.comments || lead.remark || "-"}</TableCell>
 
+                        <TableCell>
+                          {lead.assignedTo ? executiveNameMap[lead.assignedTo] || "-" : "-"}
+                        </TableCell>
+
                         {/* Stage = dropdown trigger */}
                         <TableCell>
                           <Badge className={stageColors[lead.stage] || ""}>{lead.stage}</Badge>
@@ -351,7 +498,7 @@ export default function Leads() {
                               )}
                             </Button>
 
-                         {/*  <Button
+                            {/*  <Button
                               size="icon"
                               variant="ghost"
                               onClick={() => handleWhatsApp(lead.phone)}
@@ -383,15 +530,17 @@ export default function Leads() {
                               <Edit className="w-4 h-4" />
                             </Button>
 
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleDelete(lead.id)}
-                              title="Delete"
-                              data-testid={`button-delete-${lead.id}`}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            {canDeleteLead && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleDelete(lead.id)}
+                                title="Delete"
+                                data-testid={`button-delete-${lead.id}`}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

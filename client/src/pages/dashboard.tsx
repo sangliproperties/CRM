@@ -15,7 +15,12 @@ import { Link } from "wouter";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const canViewPropertyStats = user?.role === "Admin" || user?.role === "SuperAdmin";
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const canSeeMonthlySales =
+    user?.role === "Admin" ||
+    user?.role === "SuperAdmin" ||
+    user?.role === "Marketing Executive";
 
   const { data: stats, isLoading: statsLoading } = useQuery<any>({
     queryKey: ["/api/dashboard/stats"],
@@ -99,6 +104,12 @@ export default function Dashboard() {
 
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
+  const currentMonthLabel = new Date().toLocaleString("en-US", { month: "short" });
+  const currentMonthSales =
+    salesData?.find((d: any) => d.month === currentMonthLabel)?.sales ?? 0;
+
+  const salesSparkData = (salesData ?? []).slice(-6); // last 6 months for mini graph
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -142,38 +153,42 @@ export default function Dashboard() {
         {/* RIGHT SIDE: 2 NEW CARDS + REFRESH */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {/* Total Properties For Rent */}
-          <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm">
-            <CardContent className="flex items-center gap-3 px-4 py-3">
-              <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-emerald-600" />
-              </div>
-              <div className="leading-tight">
-                <p className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
-                  Total Properties For Rent
-                </p>
-                <p className="text-lg font-bold text-slate-900">
-                  {stats?.totalRentProperties || 0}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {canViewPropertyStats && (
+            <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+              <CardContent className="flex items-center gap-3 px-4 py-3">
+                <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <Building2 className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
+                    Total Properties For Rent
+                  </p>
+                  <p className="text-lg font-bold text-slate-900">
+                    {stats?.totalRentProperties || 0}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Total Properties For Sell */}
-          <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm">
-            <CardContent className="flex items-center gap-3 px-4 py-3">
-              <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-orange-600" />
-              </div>
-              <div className="leading-tight">
-                <p className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
-                  Total Properties For Sell
-                </p>
-                <p className="text-lg font-bold text-slate-900">
-                  {stats?.totalSellProperties || 0}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {canViewPropertyStats && (
+            <Card className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+              <CardContent className="flex items-center gap-3 px-4 py-3">
+                <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
+                  <Building2 className="h-4 w-4 text-orange-600" />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
+                    Total Properties For Sell
+                  </p>
+                  <p className="text-lg font-bold text-slate-900">
+                    {stats?.totalSellProperties || 0}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Refresh */}
           <Button
@@ -192,7 +207,10 @@ export default function Dashboard() {
 
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div
+        className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${canSeeMonthlySales ? "lg:grid-cols-5" : "lg:grid-cols-4"
+          }`}
+      >
         {/* Total Leads */}
         <Card
           className="rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow"
@@ -217,27 +235,29 @@ export default function Dashboard() {
         </Card>
 
         {/* Properties */}
-        <Card
-          className="rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow"
-          data-testid="stat-properties"
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
-              Properties
-            </CardTitle>
-            <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Building2 className="h-4 w-4 text-emerald-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {stats?.totalProperties || 0}
-            </div>
-            <p className="text-xs text-slate-500">
-              {stats?.availableProperties || 0} available
-            </p>
-          </CardContent>
-        </Card>
+        {canViewPropertyStats && (
+          <Card
+            className="rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow"
+            data-testid="stat-properties"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
+                Properties
+              </CardTitle>
+              <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
+                <Building2 className="h-4 w-4 text-emerald-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">
+                {stats?.totalProperties || 0}
+              </div>
+              <p className="text-xs text-slate-500">
+                {stats?.availableProperties || 0} available
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Closed Deals */}
         <Card
@@ -259,6 +279,7 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500">This month</p>
           </CardContent>
         </Card>
+
 
         {/* Total Revenue (Admin only) */}
         {user?.role === "Admin" || user?.role === "SuperAdmin" ? (

@@ -126,6 +126,14 @@
     "firstName": "Yojana",
     "lastName": "Kamble",
     "active": true
+  },
+  {
+    "email": "Rahul12@sanglicrm.com",
+    "password": "Rahul12",
+    "role": "Marketing Executive",
+    "firstName": "Rahul",
+    "lastName": "Patil",
+    "active": true
   }
 ]
 

@@ -2148,32 +2148,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/dashboard/lead-sources", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      if (user.role === "Sales Agent" || user.role === "Marketing Executive") {
-        const allLeads = await storage.getLeads();
-        const myLeads = allLeads.filter((lead) => lead.assignedTo === userId);
-
-        const sourceMap = myLeads.reduce((acc, lead) => {
-          acc[lead.source] = (acc[lead.source] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-
-        const filteredSourceData = Object.entries(sourceMap).map(
-          ([source, count]) => ({
-            source,
-            count,
-          })
-        );
-
-        return res.json(filteredSourceData);
-      }
-
       const leadSourceData = await storage.getLeadSourceData();
       res.json(leadSourceData);
     } catch (error) {
@@ -2194,45 +2168,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/dashboard/recent-activities", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
       const activities = await storage.getRecentActivities(10);
-
-      if (user.role === "Sales Agent" || user.role === "Marketing Executive") {
-        const allLeads = await storage.getLeads();
-        const myLeadIds = allLeads
-          .filter((lead) => lead.assignedTo === userId)
-          .map((lead) => lead.id)
-          .filter((id): id is string => id !== null);
-
-        const myActivities = activities.filter(
-          (activity) => activity.leadId && myLeadIds.includes(activity.leadId)
-        );
-
-        const formattedActivities = myActivities.map((activity) => ({
-          ...activity,
-          timeAgo: getTimeAgo(new Date(activity.createdAt!)),
-        }));
-
-        return res.json(formattedActivities);
-      }
 
       const formattedActivities = activities.map((activity) => ({
         ...activity,
         timeAgo: getTimeAgo(new Date(activity.createdAt!)),
       }));
+
       res.json(formattedActivities);
     } catch (error) {
       console.error("Error fetching recent activities:", error);
       res.status(500).json({ message: "Failed to fetch activities" });
     }
   });
-
   app.get("/api/dashboard/daily-activities", async (req, res) => {
     try {
       const dailyActivities = await storage.getDailyExecutiveActivities();
@@ -3062,11 +3010,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/pdf/sales-summary", isAuthenticated, async (req, res) => {
     try {
-        const { startDate, endDate } = parseDateRange(req);
+      const { startDate, endDate } = parseDateRange(req);
 
-    const stats = await storage.getDashboardStats({ startDate, endDate });
-    const salesData = await storage.getSalesData({ startDate, endDate });
-    const topAgents = await storage.getTopAgents(); // keep as-is unless you add date filter support
+      const stats = await storage.getDashboardStats({ startDate, endDate });
+      const salesData = await storage.getSalesData({ startDate, endDate });
+      const topAgents = await storage.getTopAgents(); // keep as-is unless you add date filter support
       const summaryData = {
         totalLeads: stats.totalLeads,
         activeLeads: stats.activeLeads,
